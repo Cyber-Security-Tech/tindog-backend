@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./node_modules/@prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  favorites Favorite[]
+}
+
+model Dog {
+  id      String   @id @default(uuid())
+  name    String
+  breed   String
+  age     String
+  about   String
+  image   String
+  favorites Favorite[]
+}
+
+model Favorite {
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  dog    Dog    @relation(fields: [dogId], references: [id])
+  dogId  String
+}
