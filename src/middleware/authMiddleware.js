@@ -1,7 +1,10 @@
-// src/middleware/authMiddleware.js
-
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('❌ JWT_SECRET must be defined in your environment variables');
+}
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -15,9 +18,10 @@ const authMiddleware = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    console.log(`🔐 Authenticated user: ${decoded.userId}`);
     next();
   } catch (err) {
-    console.error('Auth error:', err);
+    console.error('❌ Invalid token:', err);
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };

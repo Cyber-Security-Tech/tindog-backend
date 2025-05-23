@@ -1,26 +1,27 @@
-// src/controllers/favoriteController.js
+const prisma = require('../lib/prisma');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Helper: get fresh list of user's favorited dogs
+const getUserFavorites = async (userId) => {
+  const favorites = await prisma.favorite.findMany({
+    where: { userId },
+    include: { dog: true },
+  });
+  return favorites.map(fav => fav.dog);
+};
 
-// Get current user's favorites
+// GET: All favorites
 exports.getFavorites = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const favorites = await prisma.favorite.findMany({
-      where: { userId },
-      include: { dog: true },
-    });
-
-    const favoritedDogs = favorites.map(fav => fav.dog);
+    const favoritedDogs = await getUserFavorites(userId);
     res.json(favoritedDogs);
   } catch (err) {
-    console.error('Error fetching favorites:', err);
+    console.error('❌ Error fetching favorites:', err);
     res.status(500).json({ error: 'Failed to load favorites' });
   }
 };
 
-// Toggle favorite dog
+// POST/DELETE: Toggle favorite dog
 exports.toggleFavorite = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -32,20 +33,22 @@ exports.toggleFavorite = async (req, res) => {
 
     if (existing) {
       await prisma.favorite.delete({ where: { id: existing.id } });
-      return res.json({ message: 'Removed from favorites' });
-    } else {
-      await prisma.favorite.create({
-        data: { userId, dogId },
-      });
-      return res.json({ message: 'Added to favorites' });
+      const updated = await getUserFavorites(userId);
+      return res.json({ message: 'Removed from favorites', favorites: updated });
     }
+
+    await prisma.favorite.create({
+      data: { userId, dogId },
+    });
+    const updated = await getUserFavorites(userId);
+    res.json({ message: 'Added to favorites', favorites: updated });
   } catch (err) {
-    console.error('Error toggling favorite:', err);
+    console.error('❌ Error toggling favorite:', err);
     res.status(500).json({ error: 'Failed to update favorites' });
   }
 };
 
-// ❗ NEW: Remove favorite (used by DELETE /api/favorites/:dogId)
+// DELETE /api/favorites/:dogId
 exports.removeFavorite = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -55,9 +58,10 @@ exports.removeFavorite = async (req, res) => {
       where: { userId, dogId },
     });
 
-    res.json({ message: 'Favorite removed' });
+    const updated = await getUserFavorites(userId);
+    res.json({ message: 'Favorite removed', favorites: updated });
   } catch (err) {
-    console.error('Error removing favorite:', err);
+    console.error('❌ Error removing favorite:', err);
     res.status(500).json({ error: 'Failed to remove favorite' });
   }
 };
