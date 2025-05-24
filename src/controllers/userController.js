@@ -3,9 +3,17 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
-if (!JWT_SECRET) {
-  throw new Error('❌ JWT_SECRET must be defined in your environment variables');
+if (!JWT_SECRET || !REFRESH_SECRET) {
+  throw new Error('❌ JWT_SECRET and REFRESH_SECRET must be defined in your environment variables');
+}
+
+// Helper: Create tokens
+function generateTokens(userId) {
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ userId }, REFRESH_SECRET, { expiresIn: '7d' });
+  return { accessToken, refreshToken };
 }
 
 // Create new user
@@ -31,7 +39,7 @@ exports.signupUser = async (req, res) => {
   }
 };
 
-// Authenticate user and return token
+// Authenticate user and return tokens
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -47,14 +55,29 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
-
+    const { accessToken, refreshToken } = generateTokens(user.id);
     const { password: _, ...safeUser } = user;
 
-    res.json({ message: 'Login successful', token, user: safeUser });
+    res.json({ message: 'Login successful', accessToken, refreshToken, user: safeUser });
   } catch (err) {
     console.error('❌ Login error:', err);
     res.status(500).json({ error: 'Failed to login' });
+  }
+};
+
+// Handle token refresh request
+exports.refreshToken = (req, res) => {
+  const { token } = req.body;
+
+  if (!token) return res.status(401).json({ error: 'Refresh token required' });
+
+  try {
+    const decoded = jwt.verify(token, REFRESH_SECRET);
+    const accessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, { expiresIn: '15m' });
+    res.json({ accessToken });
+  } catch (err) {
+    console.error('❌ Refresh token error:', err);
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
 };
 
@@ -155,10 +178,7 @@ exports.deleteUserAccount = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // Remove associated favorites
     await prisma.favorite.deleteMany({ where: { userId } });
-
-    // Delete user account
     await prisma.user.delete({ where: { id: userId } });
 
     res.json({ message: 'Account deleted successfully.' });
