@@ -6,6 +6,7 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET must be defined in your environment variables');
 }
 
+// Middleware to verify access tokens
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -19,18 +20,22 @@ const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (!decoded || !decoded.userId) {
-      return res.status(401).json({ error: 'Unauthorized: Malformed token' });
+      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
 
     req.user = {
       userId: decoded.userId,
-      ...decoded, // supports future enhancements like role, permissions
+      ...decoded, // support for future role-based access
     };
 
     next();
   } catch (err) {
-    console.error('Invalid token:', err);
-    res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    // For refresh flow compatibility, don’t flood logs for every client retry
+    if (req.path !== '/api/users/refresh-token') {
+      console.error('Invalid token:', err.message);
+    }
+
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 };
 

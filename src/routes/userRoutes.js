@@ -17,40 +17,40 @@ const validate = require('../middleware/validateMiddleware');
 
 const router = express.Router();
 
-// Rate limiter: max 5 login attempts per IP in 15 minutes
+// Limit login attempts to prevent brute-force attacks
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: { error: 'Too many login attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// User signup
+// Signup endpoint
 router.post(
   '/signup',
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   ],
   validate,
   signupUser
 );
 
-// User login
+// Login endpoint (rate limited)
 router.post(
   '/login',
   loginLimiter,
   [
     body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-    body('password').notEmpty().withMessage('Password is required')
+    body('password').notEmpty().withMessage('Password is required'),
   ],
   validate,
   loginUser
 );
 
-// Refresh access token
+// Refresh token endpoint (not auth-protected)
 router.post(
   '/refresh-token',
   [body('token').notEmpty().withMessage('Refresh token is required')],
@@ -58,7 +58,7 @@ router.post(
   refreshToken
 );
 
-// Get current logged-in user's profile
+// Get user profile
 router.get('/me', auth, getCurrentUser);
 
 // Update user profile
@@ -67,7 +67,7 @@ router.patch(
   auth,
   [
     body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
-    body('email').optional().isEmail().withMessage('Must be a valid email').normalizeEmail()
+    body('email').optional().isEmail().withMessage('Must be a valid email').normalizeEmail(),
   ],
   validate,
   updateUserProfile
@@ -79,7 +79,7 @@ router.post(
   auth,
   [
     body('currentPassword').notEmpty().withMessage('Current password is required'),
-    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
   ],
   validate,
   changeUserPassword
