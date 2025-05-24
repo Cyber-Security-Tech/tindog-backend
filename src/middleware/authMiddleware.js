@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  throw new Error('❌ JWT_SECRET must be defined in your environment variables');
+  throw new Error('JWT_SECRET must be defined in your environment variables');
 }
 
 const authMiddleware = (req, res, next) => {
@@ -17,11 +17,19 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    console.log(`🔐 Authenticated user: ${decoded.userId}`);
+
+    if (!decoded || !decoded.userId) {
+      return res.status(401).json({ error: 'Unauthorized: Malformed token' });
+    }
+
+    req.user = {
+      userId: decoded.userId,
+      ...decoded, // supports future enhancements like role, permissions
+    };
+
     next();
   } catch (err) {
-    console.error('❌ Invalid token:', err);
+    console.error('Invalid token:', err);
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
