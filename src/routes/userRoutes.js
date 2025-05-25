@@ -12,7 +12,7 @@ const {
   deleteUserAccount
 } = require('../controllers/userController');
 
-const auth = require('../middleware/authMiddleware');
+const { requireAuth } = require('../middleware/authMiddleware');
 const validate = require('../middleware/validateMiddleware');
 
 const router = express.Router();
@@ -59,12 +59,12 @@ router.post(
 );
 
 // Get user profile
-router.get('/me', auth, getCurrentUser);
+router.get('/me', requireAuth, getCurrentUser);
 
 // Update user profile
 router.patch(
   '/me',
-  auth,
+  requireAuth,
   [
     body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
     body('email').optional().isEmail().withMessage('Must be a valid email').normalizeEmail(),
@@ -76,7 +76,7 @@ router.patch(
 // Change password
 router.post(
   '/change-password',
-  auth,
+  requireAuth,
   [
     body('currentPassword').notEmpty().withMessage('Current password is required'),
     body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
@@ -86,6 +86,6 @@ router.post(
 );
 
 // Delete account
-router.delete('/me', auth, deleteUserAccount);
+router.delete('/me', requireAuth, deleteUserAccount);
 
 module.exports = router;

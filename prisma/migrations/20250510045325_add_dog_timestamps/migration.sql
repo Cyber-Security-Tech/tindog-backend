@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Dog" ALTER COLUMN "updatedAt" DROP DEFAULT;

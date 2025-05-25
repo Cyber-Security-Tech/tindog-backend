@@ -7,7 +7,7 @@ if (!JWT_SECRET) {
 }
 
 // Middleware to verify access tokens
-const authMiddleware = (req, res, next) => {
+const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -30,7 +30,6 @@ const authMiddleware = (req, res, next) => {
 
     next();
   } catch (err) {
-    // For refresh flow compatibility, don’t flood logs for every client retry
     if (req.path !== '/api/users/refresh-token') {
       console.error('Invalid token:', err.message);
     }
@@ -39,4 +38,6 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+module.exports = {
+  requireAuth
+};
